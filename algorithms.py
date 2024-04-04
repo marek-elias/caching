@@ -173,3 +173,42 @@ def Follower_23(requests, k, pred, a=1, alpha=1):
     #print("a", a, "instance_len", t, "total_pred", total_pred)
     return history, total_pred
 
+
+def AdaptiveQuery(requests, k, pred, error_probability=0.0, b=2):
+    cache = [None] * k
+    cache_preds = [-1] * k
+    unmarked = list(range(k))
+    history = [tuple(cache), ]
+    phase_elements = []
+    pred_gap = 0
+    total_pred = 0
+    for t, request in enumerate(requests):
+        if request not in phase_elements:
+            phase_elements.append(request)
+        if request in cache:
+            index = cache.index(request)
+        elif None in cache:
+            index = cache.index(None)
+        else:
+            if len(phase_elements) == k + 1:
+                assert not unmarked, unmarked
+                unmarked = list(range(k))
+                phase_elements = [request]
+            assert unmarked, len(phase_elements)
+            total_pred += 1
+            if len(unmarked) > b:
+                sample = random.sample(unmarked, b)
+            else:
+                sample = unmarked
+            sample_next = [cache_preds[i] for i in sample]
+            index = sample[sample_next.index(max(sample_next))]
+            if random.random() < error_probability:
+                index = random.randint(0, k - 1)
+        cache[index] = request
+        if index in unmarked:
+            unmarked.remove(index)
+        cache_preds[index] = pred[t]
+        history.append(tuple(cache))
+        pred_gap -= 1
+    #print('ftp pred',total_pred)
+    return history, total_pred
